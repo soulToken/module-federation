@@ -1,6 +1,6 @@
-# H5 真实的 Module Federation (模块联邦 2.0) 微前端示范项目
+# H5 真实的 Module Federation (模块联邦 2.0) 微前端示范项目 (Vite 全家桶)
 
-本项目已完全重构为基于 **Module Federation（模块联邦 2.0 / Rsbuild）** 的现代化微前端工程。
+本项目已完全迁移为基于 **Vite + @module-federation/vite (Module Federation 2.0 官方规范)** 的现代化微前端工程。
 
 ## 🎯 你的核心诉求在此项目中的纯粹实现
 
@@ -35,21 +35,21 @@ bridgeService.showToast('这是调用主应用的Toast', 'success');
 ## 🏗️ 模块联邦架构设计
 
 ```text
-qiankun/ (根工作区)
-├── main-app/                # 🌟【Host 主应用基座】(端口: 3000)
+module-federation/ (根工作区)
+├── main-app/                # 🌟【Host 主应用基座】(端口: 3000 - Vite)
 │   ├── src/components/      # 主应用公共组件 (CommonNavbar, CommonButton, CommonModal)
 │   ├── src/utils/           # 主应用公共方法 (authService, bridgeService, globalEventBus)
 │   ├── src/App.vue          # H5 仿真机框、底栏 TabBar、动态异步按需加载远程页面
-│   └── rsbuild.config.ts    # 模块联邦配置：exposes (暴露公共组件/方法) + remotes (引入3个子应用)
+│   └── vite.config.ts       # 模块联邦配置：exposes (暴露公共组件/方法) + remotes (引入3个子应用)
 │
-├── sub-app-mall/            # 🛒【Remote 子应用 1: 商城】(端口: 3001)
-├── sub-app-activity/        # 🎁【Remote 子应用 2: 活动抽奖】(端口: 3002)
-└── sub-app-user/            # 👤【Remote 子应用 3: 个人中心】(端口: 3003)
+├── sub-app-mall/            # 🛒【Remote 子应用 1: 商城】(端口: 3001 - Vite)
+├── sub-app-activity/        # 🎁【Remote 子应用 2: 活动抽奖】(端口: 3002 - Vite)
+└── sub-app-user/            # 👤【Remote 子应用 3: 个人中心】(端口: 3003 - Vite)
 ```
 
 ---
 
-## 🚀 本地服务访问指南（已在后台运行）
+## 🚀 本地服务访问指南
 
 - 📱 **主应用基座（聚合体验）**：[http://localhost:3000](http://localhost:3000)
 - 🛒 **商城子应用（独立运行）**：[http://localhost:3001](http://localhost:3001)
@@ -61,52 +61,102 @@ qiankun/ (根工作区)
 ```bash
 pnpm dev
 ```
-基于 Rust 编写的高性能 Rspack 驱动，4 个应用可在 **0.2 秒** 内瞬间启动，实时热更新。
+基于 Vite 驱动，4 个应用瞬间启动，享受 Vite 极速的开发体验与毫秒级热更新。
 
 ---
 
 ## 💡 核心配置文件解析
 
-### 1. 主应用暴露配置 (`main-app/rsbuild.config.ts`)
+### 1. 主应用暴露配置 (`main-app/vite.config.ts`)
 ```typescript
-pluginModuleFederation({
-  name: 'mainApp',
-  // 暴露公共组件与方法给所有子应用
-  exposes: {
-    './CommonNavbar': './src/components/CommonNavbar.vue',
-    './CommonButton': './src/components/CommonButton.vue',
-    './CommonModal': './src/components/CommonModal.vue',
-    './utils': './src/utils/index.ts',
-  },
-  // 引入 3 个子应用暴露出来的业务页面
-  remotes: {
-    subMall: 'subAppMall@http://localhost:3001/mf-manifest.json',
-    subActivity: 'subAppActivity@http://localhost:3002/mf-manifest.json',
-    subUser: 'subAppUser@http://localhost:3003/mf-manifest.json',
-  },
-  // 共享 Vue 运行时，避免重复下载 Vue 核心库（单例共享）
-  shared: {
-    vue: { singleton: true, eager: true },
-  },
-})
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import { federation } from '@module-federation/vite';
+
+export default defineConfig({
+  server: { port: 3000, cors: true, origin: 'http://localhost:3000' },
+  plugins: [
+    vue(),
+    federation({
+      name: 'mainApp',
+      filename: 'remoteEntry.js',
+      manifest: true,
+      dts: false,
+      // 暴露公共组件与方法给所有子应用
+      exposes: {
+        './CommonNavbar': './src/components/CommonNavbar.vue',
+        './CommonButton': './src/components/CommonButton.vue',
+        './CommonModal': './src/components/CommonModal.vue',
+        './utils': './src/utils/index.ts',
+      },
+      // 引入 3 个子应用暴露出来的业务页面
+      remotes: {
+        subMall: {
+          type: 'module',
+          name: 'subAppMall',
+          entry: 'http://localhost:3001/remoteEntry.js',
+          entryGlobalName: 'subAppMall',
+          shareScope: 'default',
+        },
+        subActivity: {
+          type: 'module',
+          name: 'subAppActivity',
+          entry: 'http://localhost:3002/remoteEntry.js',
+          entryGlobalName: 'subAppActivity',
+          shareScope: 'default',
+        },
+        subUser: {
+          type: 'module',
+          name: 'subAppUser',
+          entry: 'http://localhost:3003/remoteEntry.js',
+          entryGlobalName: 'subAppUser',
+          shareScope: 'default',
+        },
+      },
+      // 共享 Vue 运行时，避免重复下载 Vue 核心库（单例共享）
+      shared: {
+        vue: { singleton: true },
+      },
+    }),
+  ],
+});
 ```
 
-### 2. 子应用消费配置 (`sub-app-mall/rsbuild.config.ts`)
+### 2. 子应用消费配置 (`sub-app-mall/vite.config.ts`)
 ```typescript
-pluginModuleFederation({
-  name: 'subAppMall',
-  // 暴露自身页面给主应用宿主
-  exposes: {
-    './MallPage': './src/App.vue',
-  },
-  // 声明消费主应用的远程模块清单
-  remotes: {
-    mainApp: 'mainApp@http://localhost:3000/mf-manifest.json',
-  },
-  shared: {
-    vue: { singleton: true, eager: true },
-  },
-})
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import { federation } from '@module-federation/vite';
+
+export default defineConfig({
+  server: { port: 3001, cors: true, origin: 'http://localhost:3001' },
+  plugins: [
+    vue(),
+    federation({
+      name: 'subAppMall',
+      filename: 'remoteEntry.js',
+      manifest: true,
+      dts: false,
+      // 暴露自身页面给主应用宿主
+      exposes: {
+        './MallPage': './src/App.vue',
+      },
+      // 声明消费主应用的远程模块清单
+      remotes: {
+        mainApp: {
+          type: 'module',
+          name: 'mainApp',
+          entry: 'http://localhost:3000/remoteEntry.js',
+          entryGlobalName: 'mainApp',
+          shareScope: 'default',
+        },
+      },
+      shared: {
+        vue: { singleton: true },
+      },
+    }),
+  ],
+});
 ```
 
 ---

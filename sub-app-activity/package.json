@@ -1,18 +1,19 @@
 {
   "name": "sub-app-activity",
   "version": "1.0.0",
-  "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "rsbuild dev --port 3002",
-    "build": "rsbuild build"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "vue": "^3.5.43"
   },
   "devDependencies": {
-    "@module-federation/rsbuild-plugin": "^2.9.1",
-    "@rsbuild/core": "^2.2.9",
-    "@rsbuild/plugin-vue": "^2.0.1",
-    "typescript": "^5.4.2"
+    "@module-federation/vite": "^1.22.1",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "typescript": "^5.4.2",
+    "vite": "^8.3.0"
   }
 }

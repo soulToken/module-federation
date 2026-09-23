@@ -6,8 +6,10 @@ node_modules/
 # Production Build Outputs (构建产物)
 dist/
 **/dist/
-.rsbuild/
-**/.rsbuild/
+.vite/
+**/.vite/
+.mf/
+**/.mf/
 
 # Logs (日志)
 npm-debug.log*
