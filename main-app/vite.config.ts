@@ -50,6 +50,7 @@ export default defineConfig({
       },
       shared: {
         vue: { singleton: true },
+        'vue-router': { singleton: true },
       },
     }),
   ],

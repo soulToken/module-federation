@@ -43,6 +43,50 @@
         </div>
 
         <div class="info-group">
+          <h3>微前端路由与智能返回控制台 (Hybrid Router)</h3>
+          <div class="route-status-card">
+            <div class="route-row">
+              <span>当前全局路由:</span>
+              <strong class="route-highlight">{{ currentRoutePath }}</strong>
+            </div>
+            <div class="route-row">
+              <span>激活子应用:</span>
+              <span class="text-cyan">{{ currentRemoteLabel || '主应用门户首页' }}</span>
+            </div>
+            <div class="route-row">
+              <span>路由架构类型:</span>
+              <span :class="['subapp-pill', isSubAppWithRouter ? 'pill-green' : 'pill-yellow']">
+                {{ currentTab === 'home' ? '🏠 宿主根应用' : isSubAppWithRouter ? '⚡ 具备独立多级路由 (subMall / subUser)' : '📦 纯单页组件无独立路由 (subActivity)' }}
+              </span>
+            </div>
+            <div class="route-row">
+              <span>是否可内部后退:</span>
+              <span :class="canSubAppGoBack ? 'text-green' : 'text-gray'">
+                {{ canSubAppGoBack ? '✓ 是 (子应用内部出栈)' : '✕ 否 (已在首页，后退直达基座)' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="router-btn-grid">
+            <button class="action-route-btn" @click="jumpTo('/mall/detail/1')">
+              🛍️ 跳转商城详情: iPhone 16
+            </button>
+            <button class="action-route-btn" @click="jumpTo('/mall/detail/2')">
+              🎧 跳转商城详情: AirPods
+            </button>
+            <button class="action-route-btn" @click="jumpTo('/user/points')">
+              💎 跳转用户中心: 积分明细
+            </button>
+            <button class="action-route-btn" @click="jumpTo('/activity')">
+              🎡 跳转营销活动 (无路由)
+            </button>
+            <button class="action-back-btn" @click="handleHostBack">
+              ‹ 模拟点击后退 (智能协同出栈)
+            </button>
+          </div>
+        </div>
+
+        <div class="info-group">
           <h3>独立子应用端口直达</h3>
           <div class="port-links">
             <a href="http://localhost:3001" target="_blank" class="port-btn">
@@ -77,6 +121,9 @@
       <!-- 主应用移动端顶栏 (状态指示) -->
       <div class="h5-master-header">
         <div class="status-indicator">
+          <button v-if="currentTab !== 'home' || canSubAppGoBack" class="header-back-chip" @click="handleHostBack">
+            ‹ 返回
+          </button>
           <span class="live-dot"></span>
           <span class="status-text">{{ currentTabTitle }}</span>
         </div>
@@ -264,11 +311,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, defineAsyncComponent } from 'vue';
+import { ref, reactive, computed, watch, onMounted, defineAsyncComponent } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import CommonNavbar from './components/CommonNavbar.vue';
 import CommonButton from './components/CommonButton.vue';
 import CommonModal from './components/CommonModal.vue';
-import { authService, bridgeService, globalEventBus, ToastOptions } from './utils';
+import { authService, bridgeService, globalEventBus, routeBridge, ToastOptions } from './utils';
+
+const router = useRouter();
+const route = useRoute();
 
 // 视图控制
 const isPhoneFrame = ref(true);
@@ -285,9 +336,87 @@ const UserRemotePage = defineAsyncComponent(() => import('subUser/UserPage'));
 
 // 当前选中的 Tab，默认展示主应用自己的门户首页
 const currentTab = ref<'home' | 'mall' | 'activity' | 'user'>('home');
+
+// 路由与混合架构感知
+const currentRoutePath = computed(() => route?.path || '/');
+const isSubAppWithRouter = computed(() => routeBridge.isRoutedSubApp(currentTab.value));
+const canSubAppGoBack = ref(false);
+
+const refreshCanGoBack = () => {
+  if (currentTab.value === 'home') {
+    canSubAppGoBack.value = false;
+    return;
+  }
+  const subRoute = routeBridge.getSubAppRoute(currentTab.value);
+  canSubAppGoBack.value = Boolean(subRoute?.canGoBack);
+};
+
+// 监听子应用内部向 routeBridge 报告的状态变更
+routeBridge.onStateChange((info) => {
+  if (info.activeSubApp) {
+    const routeState = routeBridge.getSubAppRoute(info.activeSubApp);
+    canSubAppGoBack.value = Boolean(routeState?.canGoBack);
+  } else {
+    canSubAppGoBack.value = false;
+  }
+});
+
+// 跳转方法
+const jumpTo = (path: string) => {
+  if (router) {
+    router.push(path);
+  } else {
+    window.location.hash = path;
+  }
+};
+
+// 智能返回处理
+const handleHostBack = () => {
+  // 1. 优先尝试由当前激活的子应用内部路由消化（例如商品详情页 -> 商品列表页）
+  const handledInternally = routeBridge.navigateBack();
+  if (!handledInternally) {
+    // 2. 如果子应用无法后退（已在子应用根路径，或为无路由的单页活动应用），基座协同退回主应用基座门户首页
+    if (currentTab.value !== 'home') {
+      jumpTo('/home');
+      bridgeService.showToast('已安全退回主应用门户首页', 'info');
+    } else {
+      bridgeService.showToast('当前已在主应用基座首页', 'warning');
+    }
+  }
+};
+
+// 切换底部 Tab
 const switchTab = (tab: 'home' | 'mall' | 'activity' | 'user') => {
   currentTab.value = tab;
+  if (tab === 'mall') jumpTo('/mall/list');
+  else if (tab === 'activity') jumpTo('/activity');
+  else if (tab === 'user') jumpTo('/user/home');
+  else jumpTo('/home');
 };
+
+// 监听路由变化，同步 Tab 与激活子应用状态
+watch(() => route?.path, (newPath) => {
+  if (!newPath) return;
+  if (newPath.startsWith('/mall')) {
+    currentTab.value = 'mall';
+    routeBridge.setActiveSubApp('mall');
+  } else if (newPath.startsWith('/activity')) {
+    currentTab.value = 'activity';
+    routeBridge.setActiveSubApp('activity');
+  } else if (newPath.startsWith('/user')) {
+    currentTab.value = 'user';
+    routeBridge.setActiveSubApp('user');
+  } else {
+    currentTab.value = 'home';
+    routeBridge.setActiveSubApp(null);
+  }
+  refreshCanGoBack();
+}, { immediate: true });
+
+// 订阅跨应用导航请求
+routeBridge.onNavigate((target) => {
+  jumpTo(target);
+});
 
 const currentTabTitle = computed(() => {
   switch (currentTab.value) {
@@ -484,6 +613,122 @@ onMounted(() => {
 
 .text-green {
   color: #34d399;
+}
+
+.text-cyan {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.text-gray {
+  color: #64748b;
+}
+
+.route-status-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.route-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.route-highlight {
+  color: #f59e0b;
+  font-family: monospace;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.subapp-pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.pill-green {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.pill-yellow {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.router-btn-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.action-route-btn {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #bae6fd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-route-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #fff;
+}
+
+.action-back-btn {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.2s;
+}
+
+.action-back-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.header-back-chip {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: background 0.2s;
+}
+
+.header-back-chip:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .port-links {

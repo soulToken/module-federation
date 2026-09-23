@@ -89,7 +89,14 @@ import { ref } from 'vue';
 import CommonNavbar from 'mainApp/CommonNavbar';
 import CommonButton from 'mainApp/CommonButton';
 import CommonModal from 'mainApp/CommonModal';
-import { bridgeService, globalEventBus, authService } from 'mainApp/utils';
+import { bridgeService, globalEventBus, authService, routeBridge } from 'mainApp/utils';
+
+// 🌟 无独立路由子应用：声明 canGoBack = false
+routeBridge.registerSubAppRoute('subActivity', {
+  name: 'subActivity',
+  currentPath: '/activity',
+  canGoBack: false
+});
 
 const isSpinning = ref(false);
 const activeIndex = ref(0);
@@ -107,7 +114,10 @@ const prizes = [
 ];
 
 const onBack = () => {
-  bridgeService.showToast('活动页点击了主应用导航栏【返回】', 'info');
+  const handled = routeBridge.navigateBack();
+  if (!handled) {
+    routeBridge.navigateTo('/home');
+  }
 };
 
 const startDraw = () => {
