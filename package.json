@@ -1,0 +1,20 @@
+{
+  "name": "h5-module-federation-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "H5 真实的 Module Federation 模块联邦微前端项目：主应用暴露公共组件/方法，子应用原生 import 消费",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "dev:main": "pnpm --filter main-app dev",
+    "dev:mall": "pnpm --filter sub-app-mall dev",
+    "dev:activity": "pnpm --filter sub-app-activity dev",
+    "dev:user": "pnpm --filter sub-app-user dev"
+  },
+  "devDependencies": {
+    "@module-federation/rsbuild-plugin": "^2.9.1",
+    "@rsbuild/core": "^2.2.9",
+    "@rsbuild/plugin-vue": "^2.0.1",
+    "vue": "^3.5.43"
+  }
+}
