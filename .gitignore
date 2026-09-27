@@ -17,6 +17,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.log
+.vercel/
+.env
 
 # OS Generated Files (系统文件)
 .DS_Store
