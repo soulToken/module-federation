@@ -7,6 +7,9 @@
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
     "build": "pnpm -r run build",
+    "build:all": "node ./scripts/build-unified.mjs",
+    "deploy:vercel": "pnpm run build:all && npx vercel deploy --prebuilt --prod --yes",
+    "serve:prod": "node ./scripts/prod-server.mjs",
     "dev:main": "pnpm --filter main-app dev",
     "dev:mall": "pnpm --filter sub-app-mall dev",
     "dev:activity": "pnpm --filter sub-app-activity dev",
