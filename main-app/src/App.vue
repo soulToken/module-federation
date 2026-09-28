@@ -101,6 +101,109 @@
           </div>
         </div>
 
+        <!-- 微前端多版本与一键回滚控制区 -->
+        <div class="info-group">
+          <div class="sidebar-header-row">
+            <h3>微前端多版本编排 (Version Registry)</h3>
+            <button class="mini-btn-link" @click="showVersionModal = true">管理中心 ❯</button>
+          </div>
+          <div class="version-sidebar-cards">
+            <div class="ver-app-item">
+              <div class="ver-item-left">
+                <span>🛍️ 商城子应用</span>
+                <span class="active-ver-pill">{{ versionManager.getActiveVersion('subMall') }}</span>
+              </div>
+              <button
+                class="quick-rollback-btn"
+                @click="toggleVersionQuick('subMall')"
+                :title="versionManager.getActiveVersion('subMall') === 'v1.1.0' ? '回滚到 v1.0.0' : '切回 v1.1.0'"
+              >
+                {{ versionManager.getActiveVersion('subMall') === 'v1.1.0' ? '⏪ 一键回滚' : '🚀 切换大促' }}
+              </button>
+            </div>
+            <div class="ver-app-item">
+              <div class="ver-item-left">
+                <span>🎡 营销活动</span>
+                <span class="active-ver-pill">{{ versionManager.getActiveVersion('subActivity') }}</span>
+              </div>
+              <button
+                class="quick-rollback-btn"
+                @click="toggleVersionQuick('subActivity')"
+              >
+                {{ versionManager.getActiveVersion('subActivity') === 'v1.1.0' ? '⏪ 一键回滚' : '🚀 切换狂欢' }}
+              </button>
+            </div>
+            <div class="ver-app-item">
+              <div class="ver-item-left">
+                <span>👤 会员中心</span>
+                <span class="active-ver-pill">{{ versionManager.getActiveVersion('subUser') }}</span>
+              </div>
+              <span class="tag-stable">生产基线</span>
+            </div>
+          </div>
+          <button class="open-version-center-btn" @click="openVersionModal('versions')">
+            🏷️ 打开多版本管理与回滚控制台
+          </button>
+        </div>
+
+        <!-- 🧪 A/B 流量实验与金丝雀分流看板 -->
+        <div class="info-group">
+          <div class="sidebar-header-row">
+            <h3>🧪 A/B 流量实验 (Canary Bucketing)</h3>
+            <button class="mini-btn-link" @click="openVersionModal('abtest')">实验中心 ❯</button>
+          </div>
+          <div class="ab-sidebar-box">
+            <div class="ab-side-row">
+              <span class="ab-side-label">当前设备 ID:</span>
+              <code class="ab-visitor-pill">{{ currentVisitorId }}</code>
+              <button class="ab-reroll-btn" @click="handleRerollVisitor" title="重新随机摇号模拟新访客">🎲 摇号</button>
+            </div>
+
+            <div class="ab-exp-item">
+              <div class="ab-exp-header">
+                <span class="ab-app-title">🛍️ 微商城 8折大促实验</span>
+                <span class="ab-status-badge" :class="currentMallExp.inExperiment ? 'status-on' : 'status-off'">
+                  {{ currentMallExp.inExperiment ? '🟢 50:50 运行' : '⚪ 已暂停' }}
+                </span>
+              </div>
+              <div class="ab-hit-result">
+                <span>分流命中:</span>
+                <strong :class="currentMallExp.group === 'B' ? 'text-green' : 'text-slate'">
+                  {{ currentMallExp.group === 'B' ? '🅱️ 实验组 B (大促版 · v1.1.0)' : '🅰️ 对照组 A (稳定版 · v1.0.0)' }}
+                </strong>
+                <span v-if="currentMallExp.isManualOverride" class="override-mark">人工指定</span>
+                <span v-else class="hash-mark">Hash: {{ currentMallExp.hashScore }}/100</span>
+              </div>
+              <div class="ab-quick-group">
+                <button
+                  class="ab-group-tag"
+                  :class="{ 'active': currentMallExp.group === 'A' && currentMallExp.isManualOverride }"
+                  @click="forceMallAb('A')"
+                >
+                  锁定 A 组
+                </button>
+                <button
+                  class="ab-group-tag"
+                  :class="{ 'active': currentMallExp.group === 'B' && currentMallExp.isManualOverride }"
+                  @click="forceMallAb('B')"
+                >
+                  锁定 B 组
+                </button>
+                <button
+                  class="ab-group-tag btn-auto"
+                  :class="{ 'active': !currentMallExp.isManualOverride }"
+                  @click="forceMallAb('AUTO')"
+                >
+                  ⚡ 自然分流
+                </button>
+              </div>
+            </div>
+          </div>
+          <button class="open-ab-center-btn" @click="openVersionModal('abtest')">
+            🧪 打开 A/B 实验与流量分流控制台
+          </button>
+        </div>
+
         <div class="info-group">
           <h3>移动端控制</h3>
           <button class="switch-phone-btn" @click="togglePhoneFrame">
@@ -128,6 +231,14 @@
           <span class="status-text">{{ currentTabTitle }}</span>
         </div>
         <div class="master-right">
+          <button
+            class="ver-control-chip"
+            :class="{ 'chip-ab-active': isCurrentTabInExperiment }"
+            @click="openVersionModal(isCurrentTabInExperiment ? 'abtest' : 'versions')"
+            :title="'当前版本: ' + currentTabVersionTag + '，点击打开版本回滚/A/B实验中心'"
+          >
+            {{ currentTabVersionTag }}
+          </button>
           <span class="cart-pill">🛒 {{ cartCount }}</span>
           <span class="points-pill">💎 {{ userPoints }}</span>
         </div>
@@ -218,13 +329,19 @@
         <!-- Tab 1 ~ 3: 动态载入对应远程子应用 -->
         <div v-else class="remote-sub-app-wrapper">
           <div class="remote-watermark">
-            <span>🌐 正在运行：{{ currentRemoteLabel }}（模块联邦 Remote 动态引入）</span>
+            <div class="watermark-main">
+              <span>🌐 正在运行：{{ currentRemoteLabel }}</span>
+              <span class="watermark-ver-badge">版本: {{ currentTabVersionTag }}</span>
+            </div>
+            <button class="watermark-rollback-btn" @click="showVersionModal = true">
+              🏷️ 版本/回滚
+            </button>
           </div>
 
           <Suspense>
             <template #default>
               <KeepAlive>
-                <component :is="activeComponent" :key="currentTab" />
+                <component :is="activeComponent" :key="currentTab + '-' + currentTabActiveVersion" />
               </KeepAlive>
             </template>
             <template #fallback>
@@ -307,6 +424,13 @@
         <span class="toast-msg">{{ toast.message }}</span>
       </div>
     </transition>
+
+    <!-- 微前端多版本控制与 A/B 实验中心 -->
+    <VersionControlModal
+      v-model:visible="showVersionModal"
+      :initial-tab="versionModalTab"
+      @version-switched="onVersionSwitched"
+    />
   </div>
 </template>
 
@@ -316,7 +440,8 @@ import { useRouter, useRoute } from 'vue-router';
 import CommonNavbar from './components/CommonNavbar.vue';
 import CommonButton from './components/CommonButton.vue';
 import CommonModal from './components/CommonModal.vue';
-import { authService, bridgeService, globalEventBus, routeBridge, ToastOptions } from './utils';
+import VersionControlModal from './components/VersionControlModal.vue';
+import { authService, bridgeService, globalEventBus, routeBridge, versionManager, ToastOptions } from './utils';
 
 const router = useRouter();
 const route = useRoute();
@@ -328,14 +453,110 @@ const togglePhoneFrame = () => {
 };
 
 const showDemoModal = ref(false);
+const showVersionModal = ref(false);
+const versionModalTab = ref<'versions' | 'abtest'>('versions');
+const versionReloadNonce = ref(0);
 
-// 🌟 通过 Module Federation 动态异步加载 3 个远程子应用的页面级组件
-const MallRemotePage = defineAsyncComponent(() => import('subMall/MallPage'));
-const ActivityRemotePage = defineAsyncComponent(() => import('subActivity/ActivityPage'));
-const UserRemotePage = defineAsyncComponent(() => import('subUser/UserPage'));
+const openVersionModal = (tab: 'versions' | 'abtest' = 'versions') => {
+  versionModalTab.value = tab;
+  showVersionModal.value = true;
+};
 
 // 当前选中的 Tab，默认展示主应用自己的门户首页
 const currentTab = ref<'home' | 'mall' | 'activity' | 'user'>('home');
+
+// 当前访客 ID (用于 A/B 一致性分流)
+const currentVisitorId = computed(() => {
+  versionReloadNonce.value;
+  return versionManager.getVisitorId();
+});
+
+// 当前 Tab 是否命中了 A/B 实验
+const currentTabExperimentInfo = computed(() => {
+  versionReloadNonce.value;
+  const appId = currentTab.value === 'mall' ? 'subMall' : currentTab.value === 'activity' ? 'subActivity' : currentTab.value === 'user' ? 'subUser' : '';
+  if (!appId) return null;
+  const res = versionManager.evaluateExperiment(appId);
+  return res.inExperiment ? res : null;
+});
+
+const isCurrentTabInExperiment = computed(() => {
+  return Boolean(currentTabExperimentInfo.value?.inExperiment);
+});
+
+// 当前激活 Tab 对应的生效版本号
+const currentTabActiveVersion = computed(() => {
+  versionReloadNonce.value;
+  switch (currentTab.value) {
+    case 'mall': return versionManager.getActiveVersion('subMall');
+    case 'activity': return versionManager.getActiveVersion('subActivity');
+    case 'user': return versionManager.getActiveVersion('subUser');
+    default: return 'v1.0.0';
+  }
+});
+
+const currentTabVersionTag = computed(() => {
+  if (currentTab.value === 'home') return 'Host: v1.0.0';
+  if (currentTabExperimentInfo.value) {
+    const exp = currentTabExperimentInfo.value;
+    return `🧪 ${exp.group}组 (${exp.version})`;
+  }
+  return `🏷️ ${currentTabActiveVersion.value}`;
+});
+
+// 商城 A/B 状态（供侧边栏直接展示）
+const currentMallExp = computed(() => {
+  versionReloadNonce.value;
+  return versionManager.evaluateExperiment('subMall');
+});
+
+const forceMallAb = (group: string) => {
+  versionManager.setAppAbOverride('subMall', group);
+  versionReloadNonce.value++;
+  if (group === 'AUTO') {
+    bridgeService.showToast('⚡ 商城恢复算法自然分流', 'info');
+  } else {
+    bridgeService.showToast(`🎯 商城已强制锁定为 ${group} 组进行验收`, 'success');
+  }
+  bridgeService.vibrate();
+};
+
+const handleRerollVisitor = () => {
+  const newId = versionManager.resetVisitorId();
+  versionReloadNonce.value++;
+  bridgeService.showToast(`🎲 访客 ID 已重置为: ${newId}，已触发全站重新分流！`, 'info');
+  bridgeService.vibrate();
+};
+
+// 🌟 核心：基于 Manifest 动态版本编排加载的远程组件（支持零构建秒级一键回滚）
+const MallRemotePage = defineAsyncComponent(() => versionManager.loadRemoteComponent('subMall'));
+const ActivityRemotePage = defineAsyncComponent(() => versionManager.loadRemoteComponent('subActivity'));
+const UserRemotePage = defineAsyncComponent(() => versionManager.loadRemoteComponent('subUser'));
+
+// 快捷切换与一键回滚逻辑
+const toggleVersionQuick = (appId: string) => {
+  const current = versionManager.getActiveVersion(appId);
+  const target = current === 'v1.1.0' ? 'v1.0.0' : 'v1.1.0';
+  versionManager.switchVersion(appId, target);
+  versionReloadNonce.value++;
+  const appConfig = versionManager.getAppConfig(appId);
+  const isRollback = target < current;
+  bridgeService.showToast(
+    isRollback
+      ? `⏪ 已一键回滚！${appConfig?.name || appId} 降级为 ${target} (稳定版)`
+      : `🚀 切换成功！${appConfig?.name || appId} 升级为 ${target} (大促版)`,
+    'success'
+  );
+  bridgeService.vibrate();
+};
+
+const onVersionSwitched = () => {
+  versionReloadNonce.value++;
+};
+
+versionManager.onVersionChange(() => {
+  versionReloadNonce.value++;
+});
 
 // 路由与混合架构感知
 const currentRoutePath = computed(() => route?.path || '/');
@@ -1231,5 +1452,322 @@ onMounted(() => {
   .phone-notch, .phone-home-indicator {
     display: none;
   }
+}
+
+/* 多版本管理专属样式 */
+.ver-control-chip {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(99, 102, 241, 0.2));
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+.ver-control-chip:hover {
+  background: rgba(56, 189, 248, 0.3);
+  transform: scale(1.05);
+}
+
+.version-sidebar-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+.ver-app-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid #1e293b;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.ver-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.active-ver-pill {
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.quick-rollback-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.quick-rollback-btn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+.tag-stable {
+  font-size: 10px;
+  color: #64748b;
+  background: rgba(100, 116, 139, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.open-version-center-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #0284c7, #4f46e5);
+  border: none;
+  color: #fff;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.open-version-center-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+.mini-btn-link {
+  background: transparent;
+  border: none;
+  color: #38bdf8;
+  font-size: 11px;
+  cursor: pointer;
+}
+.mini-btn-link:hover {
+  text-decoration: underline;
+}
+.sidebar-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.remote-watermark {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: rgba(15, 23, 42, 0.9);
+  border-bottom: 1px solid #1e293b;
+  font-size: 10px;
+}
+.watermark-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.watermark-ver-badge {
+  font-family: monospace;
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.watermark-rollback-btn {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.watermark-rollback-btn:hover {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+/* A/B 实验专属样式 */
+.chip-ab-active {
+  background: rgba(16, 185, 129, 0.2) !important;
+  border-color: #10b981 !important;
+  color: #34d399 !important;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.ab-sidebar-box {
+  background: #172033;
+  border: 1px solid #283548;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ab-side-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.ab-side-label {
+  color: #64748b;
+}
+
+.ab-visitor-pill {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.ab-reroll-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #cbd5e1;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.2s;
+}
+
+.ab-reroll-btn:hover {
+  background: #0284c7;
+  color: white;
+}
+
+.ab-exp-item {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ab-exp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ab-app-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.ab-status-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.status-on {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.status-off {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+}
+
+.ab-hit-result {
+  font-size: 11px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.text-slate {
+  color: #cbd5e1;
+}
+
+.override-mark {
+  background: rgba(234, 179, 8, 0.2);
+  color: #facc15;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.hash-mark {
+  font-size: 9px;
+  color: #64748b;
+}
+
+.ab-quick-group {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.ab-group-tag {
+  flex: 1;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 10px;
+  padding: 3px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.ab-group-tag:hover {
+  background: #334155;
+  color: white;
+}
+
+.ab-group-tag.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: white;
+  font-weight: 700;
+}
+
+.ab-group-tag.btn-auto.active {
+  background: #10b981;
+  border-color: #34d399;
+  color: #0f172a;
+}
+
+.open-ab-center-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #059669, #0284c7);
+  border: none;
+  color: #fff;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.2s;
+}
+
+.open-ab-center-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 </style>

@@ -5,7 +5,10 @@ import { federation } from '@module-federation/vite';
 export default defineConfig(({ command }) => {
   const isProd = command === 'build';
   return {
-    base: isProd ? '/apps/user/' : '/',
+    base: process.env.VITE_APP_BASE || (isProd ? '/apps/user/' : '/'),
+    define: {
+      __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION || 'v1.0.0'),
+    },
     server: {
       port: 3003,
       cors: true,

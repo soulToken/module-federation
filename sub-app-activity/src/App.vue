@@ -11,10 +11,11 @@
 
     <div class="page-content">
       <!-- 轮播横幅 -->
-      <div class="activity-banner">
-        <span class="banner-tag">🔥 狂欢大促</span>
-        <h3>幸运积分大转盘</h3>
-        <p>100% 必中，抽中积分直接汇入主应用账户！</p>
+      <div :class="['activity-banner', isCarnivalVersion ? 'banner-carnival' : 'banner-classic']">
+        <span class="banner-tag">{{ isCarnivalVersion ? '🎉 黄金周狂欢特别版 (v1.1.0)' : '🎡 经典稳定版 (v1.0.0)' }}</span>
+        <h3>{{ isCarnivalVersion ? '🔥 黄金周狂欢大转盘 · 概率 100% 翻倍' : '幸运积分大转盘' }}</h3>
+        <p v-if="isCarnivalVersion">狂欢特惠上线！特等奖翻倍送，可在基座控制台一键回滚至 v1.0.0 验证热切换！</p>
+        <p v-else>经典稳定抽奖，100% 必中，抽中积分直接汇入主应用账户！</p>
       </div>
 
       <!-- 抽奖格子面板 -->
@@ -83,7 +84,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+
+declare const __APP_VERSION__: string;
+const currentAppVer = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v1.1.0';
+const isCarnivalVersion = computed(() => currentAppVer === 'v1.1.0');
 
 // 🌟 核心：模块联邦原生 import 组件与方法
 import CommonNavbar from 'mainApp/CommonNavbar';
@@ -162,10 +167,18 @@ const startDraw = () => {
 }
 
 .activity-banner {
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
   padding: 16px;
   border-radius: 14px;
   margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+.banner-carnival {
+  background: linear-gradient(135deg, #d97706, #dc2626);
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+}
+.banner-classic {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
   box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
 }
 

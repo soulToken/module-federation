@@ -15,6 +15,20 @@
       </div>
     </div>
 
+    <!-- 多版本状态提示条 -->
+    <div :class="['version-indicator-bar', isPromoVersion ? 'bar-promo' : 'bar-stable']">
+      <div class="ver-header">
+        <span class="ver-badge">{{ isPromoVersion ? '🚀 v1.1.0 大促特惠版' : '🛡️ v1.0.0 经典稳定版' }}</span>
+        <span class="ver-status">{{ isPromoVersion ? '🔥 全场限时 8 折秒杀立减中' : '✅ 稳定基线运行中' }}</span>
+      </div>
+      <p v-if="isPromoVersion" class="ver-note">
+        本模块由 Manifest 动态指定加载 v1.1.0；可在右上角版本管理中心「一键回滚」至 v1.0.0 验证热切换！
+      </p>
+      <p v-else class="ver-note">
+        当前为经典稳定基线版本，已成功从大促版回滚，商品恢复标准标价！
+      </p>
+    </div>
+
     <!-- 商品列表 -->
     <div class="product-list">
       <div
@@ -27,11 +41,15 @@
         <div class="product-info">
           <div class="title-row">
             <h4>{{ item.name }}</h4>
-            <span class="badge-hot">热卖</span>
+            <span v-if="isPromoVersion" class="badge-promo">-20% 特惠</span>
+            <span v-else class="badge-hot">热卖</span>
           </div>
           <p class="desc">{{ item.desc }}</p>
           <div class="price-action">
-            <span class="price">¥{{ item.price.toLocaleString() }}</span>
+            <div class="price-box">
+              <span class="price">¥{{ calculatePrice(item.price).toLocaleString() }}</span>
+              <del v-if="isPromoVersion" class="original-price">¥{{ item.price.toLocaleString() }}</del>
+            </div>
             <div class="btn-group" @click.stop>
               <CommonButton size="small" type="primary" @click="handleAddToCart(item)">
                 + 加购
@@ -48,10 +66,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import CommonButton from 'mainApp/CommonButton';
 import { authService, bridgeService, globalEventBus } from 'mainApp/utils';
+
+declare const __APP_VERSION__: string;
+const currentAppVer = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v1.1.0';
+const isPromoVersion = computed(() => currentAppVer === 'v1.1.0');
+
+const calculatePrice = (basePrice: number) => {
+  return isPromoVersion.value ? Math.round(basePrice * 0.8) : basePrice;
+};
 
 const router = useRouter();
 const userInfo = ref(authService.getUserInfo());
@@ -196,13 +222,68 @@ const handleAddToCart = (item: any) => {
   justify-content: space-between;
   align-items: center;
 }
+.price-box {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
 .price {
   font-size: 16px;
   font-weight: 700;
   color: #ef4444;
 }
+.original-price {
+  font-size: 11px;
+  color: #64748b;
+  text-decoration: line-through;
+}
 .btn-group {
   display: flex;
   gap: 6px;
+}
+
+/* 多版本与促销特别样式 */
+.version-indicator-bar {
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  transition: all 0.3s ease;
+}
+.bar-promo {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(245, 158, 11, 0.15));
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+.bar-stable {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+.ver-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.ver-badge {
+  font-weight: 700;
+  color: #f8fafc;
+}
+.ver-status {
+  font-weight: 600;
+  color: #f59e0b;
+}
+.ver-note {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.4;
+  font-size: 10px;
+}
+.badge-promo {
+  font-size: 10px;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ef4444, #f59e0b);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 </style>
