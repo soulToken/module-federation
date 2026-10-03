@@ -40,6 +40,10 @@
 - [第九章 生产环境落地上线与平替退出保障](#第九章-生产环境落地上线与平替退出保障)
   - [9.1 退出成本分析：未来不想用此项技术，代码改动大不大？](#91-退出成本分析未来不想用此项技术代码改动大不大)
   - [9.2 上线 Checklist](#92-上线-checklist)
+- [第十章 云端生产环境部署与公网在线访问验证](#第十章-云端生产环境部署与公网在线访问验证)
+  - [10.1 生产环境正式访问地址矩阵](#101-生产环境正式访问地址矩阵)
+  - [10.2 4 个对等应用的 Module Federation 生产 Entry 验证清单](#102-4-个对等应用的-module-federation-生产-entry-验证清单)
+  - [10.3 日常开发一键发版到云端指令](#103-日常开发一键发版到云端指令)
 
 ---
 
@@ -1103,3 +1107,49 @@ http.createServer((req, res) => {
 - [x] **单例协商验证通过**：全局仅存在唯一的 Vue 单例，组件跨应用状态共享通畅；
 - [x] **秒级回滚演练通过**：运行 `pnpm run rollback mall v1.0.0` 3 秒内全网无感回退；
 - [x] **A/B 实验一致性验证通过**：运行 `pnpm run ab-test mall 80:20` 流量权重平滑调控生效。
+
+---
+
+## 第十章 云端生产环境部署与公网在线访问验证
+
+本项目已全量发布至全球 Anycast 边缘 CDN（基于 Vercel 现代化无服务器/边缘网络架构），实现了 4 个独立微应用与组件中心的生产级单域名统一挂载、零跨域访问与动态清单调度。
+
+### 10.1 生产环境正式访问地址矩阵
+
+| 访问目标 / 独立微应用 | 生产环境公网在线 URL | 说明与功能验证 |
+| :--- | :--- | :--- |
+| **全站主入口 (微商城对等应用)** | [https://module-federation-rosy.vercel.app/](https://module-federation-rosy.vercel.app/) | 默认落地微商城（当前激活 `v1.1.0` 大促特惠版），就地嵌入营销抽奖与会员卡片 |
+| **共享核心应用 (`hyper-core`)** | [https://module-federation-rosy.vercel.app/apps/hyper-core/](https://module-federation-rosy.vercel.app/apps/hyper-core/) | 独立组件中心看板 SPA、设计系统规范与版本控制总台 |
+| **微商城独立应用 (`hyper-mall`)** | [https://module-federation-rosy.vercel.app/apps/hyper-mall/](https://module-federation-rosy.vercel.app/apps/hyper-mall/) | 独立运行的商品瀑布流、跨微应用动态挂件聚合 SPA |
+| **营销活动独立应用 (`hyper-activity`)** | [https://module-federation-rosy.vercel.app/apps/hyper-activity/](https://module-federation-rosy.vercel.app/apps/hyper-activity/) | 独立运行的幸运抽奖轮盘、活动积分互通 SPA |
+| **用户中心独立应用 (`hyper-user`)** | [https://module-federation-rosy.vercel.app/apps/hyper-user/](https://module-federation-rosy.vercel.app/apps/hyper-user/) | 独立运行的个人会员资产、权益卡包 SPA |
+| **去中心化调度清单 (`Registry`)** | [https://module-federation-rosy.vercel.app/hyper-registry.json](https://module-federation-rosy.vercel.app/hyper-registry.json) | 生产环境在线元数据清单（不可变 CDN 缓存控制：no-cache） |
+
+### 10.2 4 个对等应用的 Module Federation 生产 Entry 验证清单
+
+所有独立应用的 `remoteEntry.js` 均已就绪且经过全球 CDN 真实请求验证（HTTP 200）：
+
+1. **核心公共组件与运行时解析器 (`hyper-core`)**：
+   - 生产激活入口：`https://module-federation-rosy.vercel.app/apps/hyper-core/remoteEntry.js`
+   - 物理隔离版本：`https://module-federation-rosy.vercel.app/apps/hyper-core/v1.0.0/remoteEntry.js`
+2. **微商城对等模块 (`hyper-mall`)**：
+   - 生产激活入口：`https://module-federation-rosy.vercel.app/apps/hyper-mall/remoteEntry.js`
+   - 物理隔离版本 v1.0.0：`https://module-federation-rosy.vercel.app/apps/hyper-mall/v1.0.0/remoteEntry.js`
+   - 物理隔离版本 v1.1.0：`https://module-federation-rosy.vercel.app/apps/hyper-mall/v1.1.0/remoteEntry.js`
+3. **营销活动对等模块 (`hyper-activity`)**：
+   - 生产激活入口：`https://module-federation-rosy.vercel.app/apps/hyper-activity/remoteEntry.js`
+   - 物理隔离版本 v1.0.0：`https://module-federation-rosy.vercel.app/apps/hyper-activity/v1.0.0/remoteEntry.js`
+   - 物理隔离版本 v1.1.0：`https://module-federation-rosy.vercel.app/apps/hyper-activity/v1.1.0/remoteEntry.js`
+4. **用户中心对等模块 (`hyper-user`)**：
+   - 生产激活入口：`https://module-federation-rosy.vercel.app/apps/hyper-user/remoteEntry.js`
+   - 物理隔离版本 v1.0.0：`https://module-federation-rosy.vercel.app/apps/hyper-user/v1.0.0/remoteEntry.js`
+
+### 10.3 日常开发一键发版到云端指令
+
+在本地开发修改并调试完成后，仅需在根目录运行以下一条指令，即可自动完成 4 个独立项目多版本并行构建并直推云端全球 Anycast CDN：
+
+```bash
+pnpm run deploy:vercel
+```
+该命令会自动触发本地 `scripts/build-unified.mjs` 多版本编译，并通过 Vercel 命令行工具秒级增量同步至全球边缘节点。
+
