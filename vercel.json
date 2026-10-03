@@ -1,9 +1,11 @@
 {
+  "buildCommand": "pnpm run build:all",
+  "outputDirectory": "dist",
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/version-manifest.json",
-      "destination": "/version-manifest.json"
+      "source": "/hyper-registry.json",
+      "destination": "/hyper-registry.json"
     },
     {
       "source": "/apps/:appId/:version/:path*",
@@ -14,13 +16,29 @@
       "destination": "/apps/:appId/:path*"
     },
     {
+      "source": "/mall/:path*",
+      "destination": "/apps/hyper-mall/index.html"
+    },
+    {
+      "source": "/activity/:path*",
+      "destination": "/apps/hyper-activity/index.html"
+    },
+    {
+      "source": "/user/:path*",
+      "destination": "/apps/hyper-user/index.html"
+    },
+    {
+      "source": "/core/:path*",
+      "destination": "/apps/hyper-core/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
     {
-      "source": "/version-manifest.json",
+      "source": "/hyper-registry.json",
       "headers": [
         {
           "key": "Cache-Control",

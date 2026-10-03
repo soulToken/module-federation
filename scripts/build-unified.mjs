@@ -6,9 +6,9 @@ import { execSync } from 'node:child_process';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 const outDir = path.join(rootDir, 'dist');
-const manifestPath = path.join(rootDir, 'version-manifest.json');
+const manifestPath = path.join(rootDir, 'hyper-registry.json');
 
-console.log('📦 [1/4] Loading Version Manifest...');
+console.log('📦 [1/4] Loading Hyper Registry Manifest...');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
 console.log(`✨ Current Active Versions:`, manifest.activeVersions);
 
@@ -32,77 +32,90 @@ function copyDir(src, dest) {
   }
 }
 
-console.log('🏗️ [3/4] Building host application (main-app)...');
-execSync('pnpm --filter main-app build', { cwd: rootDir, stdio: 'inherit' });
-copyDir(path.join(rootDir, 'main-app/dist'), outDir);
+console.log('🚀 [3/4] Multi-Version Builds for all Peer Micro-Frontends...');
 
-console.log('🚀 [4/4] Multi-Version Builds for all Micro-Frontends...');
-
-// 1. Build sub-app-mall versions
-console.log('  🛍️ Building Mall v1.0.0 (经典稳定版)...');
-execSync('pnpm --filter sub-app-mall build', {
+// 0. Build hyper-core (独立部署的核心公共应用)
+console.log('  🧩 Building hyper-core (核心公共组件与运行时解析服务)...');
+execSync('pnpm --filter hyper-core build', {
   cwd: rootDir,
   stdio: 'inherit',
-  env: { ...process.env, VITE_APP_VERSION: 'v1.0.0', VITE_APP_BASE: '/apps/mall/v1.0.0/' }
+  env: { ...process.env, VITE_APP_VERSION: 'v1.0.0', VITE_APP_BASE: '/apps/hyper-core/v1.0.0/' }
 });
-copyDir(path.join(rootDir, 'sub-app-mall/dist'), path.join(outDir, 'apps/mall/v1.0.0'));
+copyDir(path.join(rootDir, 'hyper-core/dist'), path.join(outDir, 'apps/hyper-core/v1.0.0'));
+copyDir(path.join(outDir, 'apps/hyper-core/v1.0.0'), path.join(outDir, 'apps/hyper-core'));
 
-console.log('  🛍️ Building Mall v1.1.0 (大促特惠版)...');
-execSync('pnpm --filter sub-app-mall build', {
+// 1. Build hyper-mall versions
+console.log('  🛍️ Building hyper-mall v1.0.0 (经典稳定版)...');
+execSync('pnpm --filter @hyper/mall build', {
   cwd: rootDir,
   stdio: 'inherit',
-  env: { ...process.env, VITE_APP_VERSION: 'v1.1.0', VITE_APP_BASE: '/apps/mall/v1.1.0/' }
+  env: { ...process.env, VITE_APP_VERSION: 'v1.0.0', VITE_APP_BASE: '/apps/hyper-mall/v1.0.0/' }
 });
-copyDir(path.join(rootDir, 'sub-app-mall/dist'), path.join(outDir, 'apps/mall/v1.1.0'));
-// Copy active version to /apps/mall/ for compatibility
-const mallActiveVer = manifest.activeVersions.subMall || 'v1.1.0';
-copyDir(path.join(outDir, `apps/mall/${mallActiveVer}`), path.join(outDir, 'apps/mall'));
+copyDir(path.join(rootDir, 'hyper-mall/dist'), path.join(outDir, 'apps/hyper-mall/v1.0.0'));
 
-// 2. Build sub-app-activity versions
-console.log('  🎡 Building Activity v1.0.0 (经典稳定版)...');
-execSync('pnpm --filter sub-app-activity build', {
+console.log('  🛍️ Building hyper-mall v1.1.0 (大促特惠版)...');
+execSync('pnpm --filter @hyper/mall build', {
   cwd: rootDir,
   stdio: 'inherit',
-  env: { ...process.env, VITE_APP_VERSION: 'v1.0.0', VITE_APP_BASE: '/apps/activity/v1.0.0/' }
+  env: { ...process.env, VITE_APP_VERSION: 'v1.1.0', VITE_APP_BASE: '/apps/hyper-mall/v1.1.0/' }
 });
-copyDir(path.join(rootDir, 'sub-app-activity/dist'), path.join(outDir, 'apps/activity/v1.0.0'));
+copyDir(path.join(rootDir, 'hyper-mall/dist'), path.join(outDir, 'apps/hyper-mall/v1.1.0'));
+const mallActiveVer = manifest.activeVersions.hyperMall || 'v1.1.0';
+copyDir(path.join(outDir, `apps/hyper-mall/${mallActiveVer}`), path.join(outDir, 'apps/hyper-mall'));
+// Also copy mall to root index as default landing peer
+copyDir(path.join(outDir, `apps/hyper-mall/${mallActiveVer}`), outDir);
 
-console.log('  🎡 Building Activity v1.1.0 (黄金周狂欢版)...');
-execSync('pnpm --filter sub-app-activity build', {
+// 2. Build hyper-activity versions
+console.log('  🎡 Building hyper-activity v1.0.0 (经典稳定版)...');
+execSync('pnpm --filter @hyper/activity build', {
   cwd: rootDir,
   stdio: 'inherit',
-  env: { ...process.env, VITE_APP_VERSION: 'v1.1.0', VITE_APP_BASE: '/apps/activity/v1.1.0/' }
+  env: { ...process.env, VITE_APP_VERSION: 'v1.0.0', VITE_APP_BASE: '/apps/hyper-activity/v1.0.0/' }
 });
-copyDir(path.join(rootDir, 'sub-app-activity/dist'), path.join(outDir, 'apps/activity/v1.1.0'));
-const activityActiveVer = manifest.activeVersions.subActivity || 'v1.1.0';
-copyDir(path.join(outDir, `apps/activity/${activityActiveVer}`), path.join(outDir, 'apps/activity'));
+copyDir(path.join(rootDir, 'hyper-activity/dist'), path.join(outDir, 'apps/hyper-activity/v1.0.0'));
 
-// 3. Build sub-app-user version
-console.log('  👤 Building User v1.0.0 (会员基础版)...');
-execSync('pnpm --filter sub-app-user build', {
+console.log('  🎡 Building hyper-activity v1.1.0 (黄金周狂欢版)...');
+execSync('pnpm --filter @hyper/activity build', {
   cwd: rootDir,
   stdio: 'inherit',
-  env: { ...process.env, VITE_APP_VERSION: 'v1.0.0', VITE_APP_BASE: '/apps/user/v1.0.0/' }
+  env: { ...process.env, VITE_APP_VERSION: 'v1.1.0', VITE_APP_BASE: '/apps/hyper-activity/v1.1.0/' }
 });
-copyDir(path.join(rootDir, 'sub-app-user/dist'), path.join(outDir, 'apps/user/v1.0.0'));
-const userActiveVer = manifest.activeVersions.subUser || 'v1.0.0';
-copyDir(path.join(outDir, `apps/user/${userActiveVer}`), path.join(outDir, 'apps/user'));
+copyDir(path.join(rootDir, 'hyper-activity/dist'), path.join(outDir, 'apps/hyper-activity/v1.1.0'));
+const activityActiveVer = manifest.activeVersions.hyperActivity || 'v1.1.0';
+copyDir(path.join(outDir, `apps/hyper-activity/${activityActiveVer}`), path.join(outDir, 'apps/hyper-activity'));
 
-// 4. Copy version-manifest.json to dist
-fs.copyFileSync(manifestPath, path.join(outDir, 'version-manifest.json'));
+// 3. Build hyper-user version
+console.log('  👤 Building hyper-user v1.0.0 (会员基础版)...');
+execSync('pnpm --filter @hyper/user build', {
+  cwd: rootDir,
+  stdio: 'inherit',
+  env: { ...process.env, VITE_APP_VERSION: 'v1.0.0', VITE_APP_BASE: '/apps/hyper-user/v1.0.0/' }
+});
+copyDir(path.join(rootDir, 'hyper-user/dist'), path.join(outDir, 'apps/hyper-user/v1.0.0'));
+const userActiveVer = manifest.activeVersions.hyperUser || 'v1.0.0';
+copyDir(path.join(outDir, `apps/hyper-user/${userActiveVer}`), path.join(outDir, 'apps/hyper-user'));
+
+// 4. Copy hyper-registry.json to dist
+fs.copyFileSync(manifestPath, path.join(outDir, 'hyper-registry.json'));
 
 // 5. Generate vercel.json with fine-tuned rewrite rules and caching
 const staticVercelConfig = {
+  buildCommand: 'pnpm run build:all',
+  outputDirectory: 'dist',
   cleanUrls: true,
   rewrites: [
-    { source: '/version-manifest.json', destination: '/version-manifest.json' },
+    { source: '/hyper-registry.json', destination: '/hyper-registry.json' },
     { source: '/apps/:appId/:version/:path*', destination: '/apps/:appId/:version/:path*' },
     { source: '/apps/:appId/:path*', destination: '/apps/:appId/:path*' },
+    { source: '/mall/:path*', destination: '/apps/hyper-mall/index.html' },
+    { source: '/activity/:path*', destination: '/apps/hyper-activity/index.html' },
+    { source: '/user/:path*', destination: '/apps/hyper-user/index.html' },
+    { source: '/core/:path*', destination: '/apps/hyper-core/index.html' },
     { source: '/(.*)', destination: '/index.html' }
   ],
   headers: [
     {
-      source: '/version-manifest.json',
+      source: '/hyper-registry.json',
       headers: [
         { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
         { key: 'Access-Control-Allow-Origin', value: '*' }
@@ -129,52 +142,15 @@ const staticVercelConfig = {
 fs.writeFileSync(path.join(outDir, 'vercel.json'), JSON.stringify(staticVercelConfig, null, 2));
 fs.writeFileSync(path.join(rootDir, 'vercel.json'), JSON.stringify(staticVercelConfig, null, 2));
 
-console.log('✅ Multi-version production artifacts merged successfully into dist/ !');
+console.log('✅ Decentralized peer production artifacts generated in dist/ !');
 
-// 6. Sync to .vercel/output/static for Vercel --prebuilt deployment
+// 6. Sync to .vercel/output/static for Vercel
 const vercelOutputDir = path.join(rootDir, '.vercel/output');
 const vercelStaticDir = path.join(vercelOutputDir, 'static');
 if (fs.existsSync(vercelOutputDir)) {
-  console.log('⚡ [5/5] Syncing production build to .vercel/output/static ...');
+  console.log('⚡ [4/4] Syncing production build to .vercel/output/static ...');
   if (fs.existsSync(vercelStaticDir)) {
     fs.rmSync(vercelStaticDir, { recursive: true, force: true });
   }
   copyDir(outDir, vercelStaticDir);
-
-  const vercelBuildOutputConfig = {
-    version: 3,
-    routes: [
-      {
-        src: "^/version-manifest\\.json$",
-        headers: {
-          "cache-control": "no-cache, no-store, must-revalidate",
-          "access-control-allow-origin": "*"
-        },
-        continue: true
-      },
-      {
-        src: "^/(.*)remoteEntry\\.js$",
-        headers: {
-          "cache-control": "no-cache, no-store, must-revalidate",
-          "access-control-allow-origin": "*"
-        },
-        continue: true
-      },
-      {
-        src: "^/(.*)$",
-        headers: {
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET,OPTIONS,PATCH,DELETE,POST,PUT",
-          "access-control-allow-headers": "*"
-        },
-        continue: true
-      },
-      { handle: "filesystem" },
-      { src: "^/apps/([^/]+)/([^/]+)/(.*)$", dest: "/apps/$1/$2/$3" },
-      { src: "^/apps/([^/]+)/(.*)$", dest: "/apps/$1/$2" },
-      { src: "^/.*$", dest: "/index.html" }
-    ]
-  };
-  fs.writeFileSync(path.join(vercelOutputDir, 'config.json'), JSON.stringify(vercelBuildOutputConfig, null, 2));
-  console.log('✅ Synchronized .vercel/output/static and config.json successfully!');
 }

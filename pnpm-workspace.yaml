@@ -1,3 +1,2 @@
 packages:
-  - 'main-app'
-  - 'sub-app-*'
+  - 'hyper-*'

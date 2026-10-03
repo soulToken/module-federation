@@ -1,33 +1,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
-const manifestPath = path.join(rootDir, 'version-manifest.json');
-const mainAppPublicManifest = path.join(rootDir, 'main-app/public/version-manifest.json');
+const manifestPath = path.join(rootDir, 'hyper-registry.json');
 const distPath = path.join(rootDir, 'dist');
 const vercelStaticPath = path.join(rootDir, '.vercel/output/static');
 
 const APP_MAP = {
-  mall: 'subMall',
-  submall: 'subMall',
-  subAppMall: 'subMall',
-  subMall: 'subMall',
-  activity: 'subActivity',
-  subactivity: 'subActivity',
-  subAppActivity: 'subActivity',
-  subActivity: 'subActivity',
-  user: 'subUser',
-  subuser: 'subUser',
-  subAppUser: 'subUser',
-  subUser: 'subUser',
+  mall: 'hyperMall',
+  hypermall: 'hyperMall',
+  submall: 'hyperMall',
+  activity: 'hyperActivity',
+  hyperactivity: 'hyperActivity',
+  subactivity: 'hyperActivity',
+  user: 'hyperUser',
+  hyperuser: 'hyperUser',
+  subuser: 'hyperUser',
 };
 
 // 1. 读取 Manifest
 if (!fs.existsSync(manifestPath)) {
-  console.error(`❌ 未找到 version-manifest.json: ${manifestPath}`);
+  console.error(`❌ 未找到 hyper-registry.json: ${manifestPath}`);
   process.exit(1);
 }
 
@@ -38,15 +33,15 @@ if (!manifest.experiments) {
 
 const args = process.argv.slice(2);
 
-// 若无参数，打印当前所有子应用的 A/B 实验状态总览
+// 若无参数，打印当前所有对等应用的 A/B 实验状态总览
 if (args.length === 0) {
   console.log(`\n======================================================`);
-  console.log(`🧪 微前端 A/B 流量实验与金丝雀灰度控制台 (CLI)`);
+  console.log(`🧪 hyper 对等微前端 A/B 流量实验与金丝雀灰度控制台 (CLI)`);
   console.log(`======================================================`);
-  
+
   for (const [appId, exp] of Object.entries(manifest.experiments)) {
     const appConfig = manifest.apps[appId];
-    console.log(`\n📦 应用: ${appConfig?.name || appId} (${appId})`);
+    console.log(`\n📦 对等微应用: ${appConfig?.name || appId} (${appId})`);
     console.log(`   🏷️ 实验名称: ${exp.name}`);
     console.log(`   ⚡ 运行状态: ${exp.enabled ? '🟢 实验运行中' : '⚪ 实验已暂停'}`);
     console.log(`   🎯 核心指标: ${exp.metric || '未设置'}`);
@@ -90,9 +85,6 @@ if (actionOrRatio === 'on' || actionOrRatio === 'enable') {
   const parts = actionOrRatio.split(':').map(Number);
   if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
     const [wA, wB] = parts;
-    if (wA + wB !== 100) {
-      console.warn(`⚠️ 提示: 比例和不等于 100% (${wA} + ${wB} = ${wA + wB})，已按输入权重生效`);
-    }
     exp.enabled = true;
     if (exp.buckets[0]) exp.buckets[0].weight = wA;
     if (exp.buckets[1]) exp.buckets[1].weight = wB;
@@ -110,14 +102,11 @@ manifest.updatedAt = new Date().toISOString();
 
 // 保存到本地
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-if (fs.existsSync(mainAppPublicManifest)) {
-  fs.writeFileSync(mainAppPublicManifest, JSON.stringify(manifest, null, 2));
-}
 if (fs.existsSync(distPath)) {
-  fs.writeFileSync(path.join(distPath, 'version-manifest.json'), JSON.stringify(manifest, null, 2));
+  fs.writeFileSync(path.join(distPath, 'hyper-registry.json'), JSON.stringify(manifest, null, 2));
 }
 if (fs.existsSync(vercelStaticPath)) {
-  fs.writeFileSync(path.join(vercelStaticPath, 'version-manifest.json'), JSON.stringify(manifest, null, 2));
+  fs.writeFileSync(path.join(vercelStaticPath, 'hyper-registry.json'), JSON.stringify(manifest, null, 2));
 }
 
 console.log(`\n======================================================`);
@@ -127,13 +116,3 @@ console.log(`📦 目标应用:   ${appConfig.name} (${appId})`);
 console.log(`⚡ 实验状态:   ${exp.enabled ? '🟢 运行中' : '⚪ 已暂停'}`);
 console.log(`📊 当前分布:   ${exp.buckets.map(b => `${b.group}组:${b.weight}%(${b.version})`).join('  |  ')}`);
 console.log(`======================================================\n`);
-
-// 触发秒级 Vercel 同步
-console.log(`📡 正在秒级同步最新 Manifest 至 Vercel 全球边缘节点...`);
-try {
-  execSync('npx vercel deploy --prebuilt --prod --yes', { cwd: rootDir, stdio: 'inherit' });
-  console.log(`\n🎉 [发布成功] A/B 实验策略已全网生效！`);
-  console.log(`🌐 访问体验: https://module-federation-rosy.vercel.app\n`);
-} catch (e) {
-  console.error(`⚠️ Vercel 推送失败，请检查网络或执行: pnpm run deploy:vercel`, e);
-}

@@ -25,10 +25,12 @@ const MIME_TYPES = {
 };
 
 const ROUTES = [
-  { prefix: '/apps/mall/', dir: path.join(rootDir, 'sub-app-mall/dist') },
-  { prefix: '/apps/activity/', dir: path.join(rootDir, 'sub-app-activity/dist') },
-  { prefix: '/apps/user/', dir: path.join(rootDir, 'sub-app-user/dist') },
-  { prefix: '/', dir: path.join(rootDir, 'main-app/dist'), spaFallback: true },
+  { prefix: '/hyper-registry.json', file: path.join(rootDir, 'hyper-registry.json') },
+  { prefix: '/apps/hyper-core/', dir: path.join(rootDir, 'dist/apps/hyper-core'), fallbackDir: path.join(rootDir, 'hyper-core/dist') },
+  { prefix: '/apps/hyper-mall/', dir: path.join(rootDir, 'dist/apps/hyper-mall'), fallbackDir: path.join(rootDir, 'hyper-mall/dist') },
+  { prefix: '/apps/hyper-activity/', dir: path.join(rootDir, 'dist/apps/hyper-activity'), fallbackDir: path.join(rootDir, 'hyper-activity/dist') },
+  { prefix: '/apps/hyper-user/', dir: path.join(rootDir, 'dist/apps/hyper-user'), fallbackDir: path.join(rootDir, 'hyper-user/dist') },
+  { prefix: '/', dir: path.join(rootDir, 'dist'), fallbackDir: path.join(rootDir, 'hyper-mall/dist'), spaFallback: true },
 ];
 
 function setHeaders(res, filePath) {
@@ -37,7 +39,7 @@ function setHeaders(res, filePath) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', '*');
-  if (filePath.endsWith('remoteEntry.js') || filePath.endsWith('mf-manifest.json')) {
+  if (filePath.endsWith('remoteEntry.js') || filePath.endsWith('hyper-registry.json')) {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   } else {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
@@ -56,10 +58,20 @@ const server = http.createServer((req, res) => {
 
   const urlPath = decodeURIComponent(req.url.split('?')[0]);
 
+  // Exact file route
+  if (urlPath === '/hyper-registry.json') {
+    const f = path.join(rootDir, 'hyper-registry.json');
+    if (fs.existsSync(f)) {
+      setHeaders(res, f);
+      return fs.createReadStream(f).pipe(res);
+    }
+  }
+
   for (const route of ROUTES) {
-    if (urlPath.startsWith(route.prefix)) {
+    if (route.dir && urlPath.startsWith(route.prefix)) {
       const relativeSubPath = urlPath.slice(route.prefix.length);
-      const filePath = path.join(route.dir, relativeSubPath);
+      const targetDir = fs.existsSync(route.dir) ? route.dir : route.fallbackDir;
+      const filePath = path.join(targetDir, relativeSubPath);
 
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         setHeaders(res, filePath);
@@ -68,16 +80,10 @@ const server = http.createServer((req, res) => {
 
       // Check index.html inside the sub-app or SPA fallback
       if (route.spaFallback) {
-        const indexPath = path.join(route.dir, 'index.html');
+        const indexPath = path.join(targetDir, 'index.html');
         if (fs.existsSync(indexPath)) {
           setHeaders(res, indexPath);
           return fs.createReadStream(indexPath).pipe(res);
-        }
-      } else {
-        const subIndex = path.join(filePath, 'index.html');
-        if (fs.existsSync(subIndex) && fs.statSync(subIndex).isFile()) {
-          setHeaders(res, subIndex);
-          return fs.createReadStream(subIndex).pipe(res);
         }
       }
     }
@@ -88,5 +94,10 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Production Micro-Frontend Gateway running at http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Production Decentralized Peer Gateway running at http://0.0.0.0:${PORT}`);
+  console.log(`   • Registry: http://0.0.0.0:${PORT}/hyper-registry.json`);
+  console.log(`   • Core:     http://0.0.0.0:${PORT}/apps/hyper-core/`);
+  console.log(`   • Mall:     http://0.0.0.0:${PORT}/apps/hyper-mall/`);
+  console.log(`   • Activity: http://0.0.0.0:${PORT}/apps/hyper-activity/`);
+  console.log(`   • User:     http://0.0.0.0:${PORT}/apps/hyper-user/`);
 });
