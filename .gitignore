@@ -30,6 +30,7 @@ ehthumbs.db
 Thumbs.db
 
 # Environment Variables (本地环境变量)
+.env
 .env.local
 .env.*.local
 
@@ -42,3 +43,5 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+.vercel
+.env*

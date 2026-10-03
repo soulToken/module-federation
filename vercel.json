@@ -1,0 +1,84 @@
+{
+  "buildCommand": "pnpm run build:all",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/hyper-registry.json",
+      "destination": "/hyper-registry.json"
+    },
+    {
+      "source": "/apps/:appId/:version/:path*",
+      "destination": "/apps/:appId/:version/:path*"
+    },
+    {
+      "source": "/apps/:appId/:path*",
+      "destination": "/apps/:appId/:path*"
+    },
+    {
+      "source": "/mall/:path*",
+      "destination": "/apps/hyper-mall/index.html"
+    },
+    {
+      "source": "/activity/:path*",
+      "destination": "/apps/hyper-activity/index.html"
+    },
+    {
+      "source": "/user/:path*",
+      "destination": "/apps/hyper-user/index.html"
+    },
+    {
+      "source": "/core/:path*",
+      "destination": "/apps/hyper-core/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/hyper-registry.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)remoteEntry.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "*"
+        }
+      ]
+    }
+  ]
+}

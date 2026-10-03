@@ -1,16 +1,23 @@
 {
-  "name": "h5-module-federation-workspace",
+  "name": "hyper-module-federation-mesh",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "H5 真实的 Module Federation 模块联邦微前端项目：主应用暴露公共组件/方法，子应用原生 import 消费",
+  "description": "去中心化 Module Federation 2.0 对等微前端系统：包含 hyper-core、hyper-mall、hyper-activity、hyper-user 全部独立部署",
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
     "build": "pnpm -r run build",
-    "dev:main": "pnpm --filter main-app dev",
-    "dev:mall": "pnpm --filter sub-app-mall dev",
-    "dev:activity": "pnpm --filter sub-app-activity dev",
-    "dev:user": "pnpm --filter sub-app-user dev"
+    "build:core": "pnpm --filter hyper-core build",
+    "build:all": "node ./scripts/build-unified.mjs",
+    "deploy:vercel": "pnpm run build:all && npx vercel deploy --prebuilt --prod --yes",
+    "rollback": "node ./scripts/rollback.mjs",
+    "ab-test": "node ./scripts/ab-test.mjs",
+    "ab": "node ./scripts/ab-test.mjs",
+    "serve:prod": "node ./scripts/prod-server.mjs",
+    "dev:core": "pnpm --filter hyper-core dev",
+    "dev:mall": "pnpm --filter @hyper/mall dev",
+    "dev:activity": "pnpm --filter @hyper/activity dev",
+    "dev:user": "pnpm --filter @hyper/user dev"
   },
   "devDependencies": {
     "@module-federation/vite": "^1.22.1",

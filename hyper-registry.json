@@ -1,0 +1,164 @@
+{
+  "name": "hyper-decentralized-registry",
+  "version": "1.0.0",
+  "updatedAt": "2026-10-03T08:00:00.000Z",
+  "activeVersions": {
+    "hyperCore": "v1.0.0",
+    "hyperMall": "v1.1.0",
+    "hyperActivity": "v1.1.0",
+    "hyperUser": "v1.0.0"
+  },
+  "apps": {
+    "hyperCore": {
+      "id": "hyperCore",
+      "name": "共享核心应用",
+      "moduleName": "hyperCore",
+      "exposePath": "./utils",
+      "icon": "🧩",
+      "devEntry": "http://localhost:3000/remoteEntry.js",
+      "versions": {
+        "v1.0.0": {
+          "version": "v1.0.0",
+          "entry": "/apps/hyper-core/v1.0.0/remoteEntry.js",
+          "releasedAt": "2026-09-20 10:00:00",
+          "tag": "独立核心服务版",
+          "description": "公共原子组件、分布式事件总线、动态解析器与A/B测试中心",
+          "badgeColor": "blue"
+        }
+      }
+    },
+    "hyperMall": {
+      "id": "hyperMall",
+      "name": "微商城对等应用",
+      "moduleName": "hyperMall",
+      "exposePath": "./MallPage",
+      "icon": "🛍️",
+      "devEntry": "http://localhost:3001/remoteEntry.js",
+      "versions": {
+        "v1.0.0": {
+          "version": "v1.0.0",
+          "entry": "/apps/hyper-mall/v1.0.0/remoteEntry.js",
+          "releasedAt": "2026-09-20 10:00:00",
+          "tag": "经典稳定版",
+          "description": "标准商品瀑布流、基础加购与结算",
+          "badgeColor": "gray"
+        },
+        "v1.1.0": {
+          "version": "v1.1.0",
+          "entry": "/apps/hyper-mall/v1.1.0/remoteEntry.js",
+          "releasedAt": "2026-10-01 08:00:00",
+          "tag": "大促特惠版",
+          "description": "全场限时 8 折秒杀、大促横幅与优惠角标",
+          "badgeColor": "green"
+        }
+      }
+    },
+    "hyperActivity": {
+      "id": "hyperActivity",
+      "name": "营销活动对等应用",
+      "moduleName": "hyperActivity",
+      "exposePath": "./ActivityPage",
+      "icon": "🎡",
+      "devEntry": "http://localhost:3002/remoteEntry.js",
+      "versions": {
+        "v1.0.0": {
+          "version": "v1.0.0",
+          "entry": "/apps/hyper-activity/v1.0.0/remoteEntry.js",
+          "releasedAt": "2026-09-20 10:00:00",
+          "tag": "经典稳定版",
+          "description": "基础转盘抽奖、积分常规消耗",
+          "badgeColor": "gray"
+        },
+        "v1.1.0": {
+          "version": "v1.1.0",
+          "entry": "/apps/hyper-activity/v1.1.0/remoteEntry.js",
+          "releasedAt": "2026-10-01 08:00:00",
+          "tag": "狂欢翻倍版",
+          "description": "黄金周狂欢特别版、特等奖奖池膨胀 100% 翻倍",
+          "badgeColor": "orange"
+        }
+      }
+    },
+    "hyperUser": {
+      "id": "hyperUser",
+      "name": "用户中心对等应用",
+      "moduleName": "hyperUser",
+      "exposePath": "./UserPage",
+      "icon": "👤",
+      "devEntry": "http://localhost:3003/remoteEntry.js",
+      "versions": {
+        "v1.0.0": {
+          "version": "v1.0.0",
+          "entry": "/apps/hyper-user/v1.0.0/remoteEntry.js",
+          "releasedAt": "2026-09-20 10:00:00",
+          "tag": "会员基准版",
+          "description": "个人资产、积分明细与订单流",
+          "badgeColor": "gray"
+        }
+      }
+    }
+  },
+  "canary": {
+    "hyperMall": {
+      "enabled": true,
+      "canaryVersion": "v1.1.0",
+      "baselineVersion": "v1.0.0",
+      "whitelistUsers": ["hyper_tester_01", "hyper_vip_99"],
+      "trafficRatio": 30
+    }
+  },
+  "experiments": {
+    "hyperMall": {
+      "id": "exp_hyper_mall_2026",
+      "name": "微商城 8折秒杀版 A/B 转化率实验",
+      "enabled": true,
+      "metric": "商品加购率 & 客单价",
+      "buckets": [
+        {
+          "group": "A",
+          "name": "对照组 A (经典版)",
+          "version": "v1.0.0",
+          "weight": 50,
+          "tag": "稳定基线",
+          "badgeColor": "gray",
+          "color": "#64748b"
+        },
+        {
+          "group": "B",
+          "name": "实验组 B (大促版)",
+          "version": "v1.1.0",
+          "weight": 50,
+          "tag": "8折秒杀",
+          "badgeColor": "green",
+          "color": "#10b981"
+        }
+      ]
+    },
+    "hyperActivity": {
+      "id": "exp_hyper_act_2026",
+      "name": "营销活动 100% 暴击翻倍 A/B 实验",
+      "enabled": false,
+      "metric": "抽奖活跃度 & 积分消耗",
+      "buckets": [
+        {
+          "group": "A",
+          "name": "对照组 A (经典轮盘)",
+          "version": "v1.0.0",
+          "weight": 70,
+          "tag": "标准概率",
+          "badgeColor": "gray",
+          "color": "#8b5cf6"
+        },
+        {
+          "group": "B",
+          "name": "实验组 B (暴击狂欢)",
+          "version": "v1.1.0",
+          "weight": 30,
+          "tag": "翻倍暴击",
+          "badgeColor": "orange",
+          "color": "#f59e0b"
+        }
+      ]
+    }
+  }
+}
